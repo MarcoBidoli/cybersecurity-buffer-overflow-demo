@@ -94,7 +94,7 @@ $1 = (char (*)[4096]) 0x7fffffffdb90
 From this we can gather an important information: the instruction pointer register (`%rip`) is located at memory address `0x7fffffffeba8` and contains the address of the next instruction which is `0x555555556aff`.
 
 A visual of the stack is the following:
-![Visualization of the Stack Frame](stack-content.png)
+![Visualization of the Stack Frame](imgs/stack-content.png)
 
 ### Part 1 - Exploit
 The goal of the first exercise is to make the web server crash. To do so, simply overwriting some return address value should be enough to make the server terminate with some unexpected behavior.
@@ -117,10 +117,15 @@ def build_exploit(shellcode: bytes) -> bytes:
 
 Then by running the server with `./clean-env.sh ./zookd-exstack 8080` and executing the automated script provided by the MIT for the evaluation we get the expected result!
 
-![First exercise pass!](ex1-pass.png)
-![The sent payload](ex1-payload.png)
+![First exercise pass!](imgs/ex1-pass.png)
+![The sent payload](imgs/ex1-payload.png)
 
 ## Part 2 - Write the shellcode and delete a file
+For the second exercise is required to not only overwrite the stack with random bytes, but to inject a shellcode constructed to delete a specific file we know it is present on the web-server. 
+
+The exploit here is similar to the first one since we are trying to exploit the same vulnerability, with the additional shellcode injeted in the payload.
+The challenging part of this second exercise is to write the shellcode direclty in x64 ASM instructions. Fortunately the source https://thesquareplanet.com/blog/smashing-the-stack-21st-century/ is a well explained blogpost where the shellcode explained is similar to the one we have to write, except for the syscall we need to use and the registry loading.
+
 
 ## Sources
 
