@@ -11,7 +11,26 @@ For the setup I relied on the instructions provided by the Lab1 guide, I ran the
 * some files to help the exploitation of the web-server like `exploit-template.py` and `shellcode.S`.
 * some scripts to help running the programs with the same addresses and to check if exploitations have been successful.
 
+---
+
+In this threat model, the attacker/adversary:
+* has the server code available for inspection 
+* is aware of the buffer overflow vulnerabilities
+* has the capabilities for writing an exploit
+* can interact with a vulnerable instance of the software
+
 ## Part 0 - Vulnerability discovery
+The first step of the lab is to analyze the codebase and find some vulnerable buffers. I started from the `zookd.c - main()` function following the code and the first vulnerable buffer have been found in 
+```c
+static void process_client(int fd) {
+    ...
+    char reqpath[4096];
+    ...
+}
+```
+which is a buffer placed on the stack. The vulnerability becomes clear once one follows the code into the `http_request_line()` and `url_decode()` functions. 
+
+An attacker can see that the server accepts request lines of up to 8192 bytes (`http.c` line 66), and `url_decode` blindly copies the path part of that netowrk input onto the reqpath buffer without any boundary checks. This allows an adversary to carefully construct constructed an input that exceeds 4096 bytes, resulting in a stack buffer overflow."
 
 ## Part 1 - Program Crash
 
