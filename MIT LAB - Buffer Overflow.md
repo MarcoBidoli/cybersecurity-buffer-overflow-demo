@@ -163,11 +163,15 @@ Which completes the second exercise of the lab, as shown in the following image 
 
 Both the complete shellcode and exploit files are available in the code folder in this repository.
 
-
-
 ## Sources
 
 - MIT 6.566, _Lab 1_ - [css.csail.mit.edu](https://css.csail.mit.edu/6.5660/2026/labs/lab1.html)
 - Smashing the stack in the 21st century - [thesquareplanet.com](https://thesquareplanet.com/blog/smashing-the-stack-21st-century/)
 - Smashing the stack for fun and profit - [phrack.org](https://phrack.org/issues/49/14#article)
-- Stack frame layout on x86-x64 - [eli.thegreenplace.net](https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64)
+- Stack frame layout on x86_x64 - [eli.thegreenplace.net](https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64)
+- Linux System Call Table for x86_64 - [blog.rchapman.org](https://blog.rchapman.org/posts/Linux_System_Call_Table_for_x86_64/)
+
+## AI usage disclosure
+Large Language Models (LLMs) were used in the context of this lab to assist in understanding various parts of the server code, correcting minor syntax errors in the Python exploit development process, and improving my understanding of x86-64 assembly language concepts and register usage. Additionally, some portions of the text in this report were revised with the assistance of LLMs to improve clarity, readability, and grammatical correctness.
+
+I declare that all work presented in this report was carried out by me. All ideas, analyses, conclusions, and any remaining errors are my sole responsibility.
