@@ -1,4 +1,4 @@
-# Cybersecurity Exam - Buffer Overflows Demo
+# Cybersecurity Exam Demo: Buffer Overflow Exploitation on Vulnerable x86-64 Systems
 
 ## Introduction
 In the following demo I will execute a remote code injection attack based on the [_Lab 1 of MIT 6.566: Computer Systems Security_](https://css.csail.mit.edu/6.5660/2026/labs/lab1.html) course. The complete lab is made of 4 parts, we will solve the first 2 in this demo.
