@@ -1,34 +1,34 @@
 # Cybersecurity Exam Demo: Buffer Overflow Exploitation on Vulnerable x86-64 Systems
 
 ## Introduction
-In the following demo I will execute a remote code injection attack based on the [_Lab 1 of MIT 6.566: Computer Systems Security_](https://css.csail.mit.edu/6.5660/2026/labs/lab1.html) course. The complete lab is made of 4 parts, we will solve the first 2 in this demo.
+In the following demo I will perform a remote code injection attack based on the [_Lab 1 of MIT 6.566: Computer Systems Security course_](https://css.csail.mit.edu/6.5660/2026/labs/lab1.html). The complete lab consists of four parts, in this demo we will focus on the first two.
 
-The objective of this demo is to inspect a vulnerable web-server (zookws) running on a x64 linux machine, find a buffer overflow vulnerability and then exploit it causing first the crash of the server and secondly execute a code injection.
+Our objective is to analyze a vulnerable web server (zookws) running on an x64 Linux machine, identify a buffer overflow vulnerability and exploit it. First, we will trigger a server crash. Then we will demonstrate arbitrary code execution through code injection.
 
-### VM and vulnerable web server
-For the setup I relied on the instructions provided by the Lab1 guide, I ran the _6.566-standalone-v26_ virtual machine on UTM on MacOS virtualizing the x64 aarch needed for the lab. Inside the virtual machine I cloned the official repository from https://github.com/mit-pdos/6.566-lab-2026 which contains:
+### Setup of VM and Vulnerable Web Server
+I relied on the instructions provided by the Lab 1 guide for the setup. I ran the _6.566-standalone-v26_ virtual machine on UTM on macOS, virtualizing the x64 architecture needed for the lab. Inside the virtual machine, I cloned the official repository from https://github.com/mit-pdos/6.566-lab-2026 which contains the following:
 
-* the zookd vulnerable server, composed of `http.c` and `zookd.c`
-* some files to help the exploitation of the web-server like `exploit-template.py` and `shellcode.S`.
-* some scripts to help running the programs with the same addresses and to check if exploitations have been successful.
+* Zookws vulnerable server, composed of `http.c` and `zookd.c`
+* Some files to help exploit the web server, such as `exploit-template.py` and `shellcode.S`.
+* Some scripts to run the programs with the same memory addresses and check if the exploitations were successful.
 
 ### Mitigation removals
-It is important to note that the server's executable and the virtual machine are set up to remove the security protections that would otherwise make a buffer overflow difficult to exploit. Specifically:
+It is important to note that the server's executable and the virtual machine are configured to eliminate the security measures that would otherwise prevent the exploitation of a buffer overflow. Specifically:
 
-* the `zookd-exstack` program has been compiled with `-fno-stack-protector` to disable the stack canary mitigation and with `-z execstack` to allow the execution of code from the stack.
-* ASLR is disabled using the `setarch -R` command
+* The `zookd-exstack` program has been compiled with the `-fno-stack-protector` flag to disable stack canary mitigation and with the `-z execstack` flag to enable code execution from the stack.
+* ASLR is disabled using the `setarch -R` command.
 
-These configurations are implemented from the Lab creators within the `Makefile` and the `clean_env.sh` script to ensure a predictable and exploitable environment for the lab
+The Lab creators implement these configurations in the `Makefile` and `clean_env.sh` script to ensure a predictable and exploitable environment.
 
 ### Threat Model
 In this threat model, the attacker/adversary:
 * has the server code available for inspection 
 * is aware of the buffer overflow vulnerabilities
-* has the capabilities for writing an exploit
+* has the capability to write an exploit
 * can interact with a vulnerable instance of the software
 
-## Part 0 - Vulnerability discovery
-The first step of the lab is to analyze the codebase and find some vulnerable buffers. I started from the `zookd.c - main()` function and after inspection of the code flow, the first vulnerable buffer has been:
+## Part 0 - Vulnerability Discovery
+The first step of the lab is to analyze the codebase and identify vulnerable buffers. I started with the `zookd.c - main()` function. After inspecting the code flow, I found the first vulnerable buffer:
 ```c
 static void process_client(int fd) {
     ...
@@ -36,38 +36,38 @@ static void process_client(int fd) {
     ...
 }
 ```
-which is a buffer placed on the stack. The vulnerability becomes clear once one follows the code into the `http_request_line()` and `url_decode()` functions. 
+which is a buffer placed on the stack. The vulnerability becomes clear when one follows the code into the `http_request_line()` and `url_decode()` functions. 
 
-The way the web server is implemented reads an HTTP req (`GET /index.html HTTP/1.1`) from a socket up to 8192 bytes (`http.c` line 66), but subsequently `url_decode`, blindly copies the request path (`/index.html`) part of that netowrk input onto the reqpath buffer, under the implicit assumption that provided input will never exceed the buffer capacity, without any boundary checks. 
+The way the web server reads an HTTP req (`GET /index.html HTTP/1.1`) from a socket up to 8192 bytes (`http.c` line 66). However, the `url_decode` function subsequently copies the request path (`/index.html`) part of that network input onto the reqpath buffer. This is done under the implicit assumption that the provided input will never exceed the buffer capacity without any boundary checks. 
 
-This allows an adversary to carefully construct an input that exceeds the buffer size and overwrites the stack, resulting in a stack buffer overflow.
+This allows an adversary to construct input that exceeds the buffer size, overwriting the stack and resulting in a stack buffer overflow.
 
 ## Part 1 - Make Zookws Crash
-As first step to exploit the discovered buffer overflow vulnerability there is the need to inspect the running program with its memory and the stack composition in order to obtain the memory addresses.
+The first step in exploiting the discovered buffer overflow vulnerability is to inspect the running program, its memory, and the stack composition to obtain the memory addresses.
 
-As a tool to inspect the program I used `gdb`, a debugger for C/C++ already present on the virtual machine.
+I used `gdb`, a C/C++ debugger already present on the virtual machine, to inspect the program
 
 ### Part 1 - Inspection
-I started by launching gdb on the compiled program `zookd-exstack`
+I started by launching gdb on the compiled program, `zookd-exstack`.
 
 ```sh
 $ ./clean-env.sh gdb ./zookd-exstack
 ```
-and setting a breakpoint after the call of the function of interest
+and setting a breakpoint after the function of interest was called
 ```sh
 (gdb) break process_client
 Breakpoint 1 at 0x2b37: file zookd.c, line 123.
 ```
 
-Now the following command is needed to attach gdb to the child processes of the server that will be forked when a connection will be accepted from the server
+The following command is now needed to attach the debugger to the child processes of the server that will be forked when a connection is accepted by the server
 ```sh
 (gdb) set follow-fork-mode child
 ```
-and finally we can run our server on port 8080 with
+Finally we can run our server on port 8080
 ```sh
 (gdb) run 8080
 ```
-Next step is to initiate a connection to our server with the help of `curl` command from another terminal and to inspect the stack frame at the breakpoint:
+The next step is to initiate a connection to our server with the `curl` command from another terminal and inspect the stack frame at the breakpoint:
 ```sh
 (gdb) backtrace
 #0  process_client (fd=4) at zookd.c:123
@@ -75,7 +75,7 @@ Next step is to initiate a connection to our server with the help of `curl` comm
 #2  0x00005555555567e7 in main (argc=2, argv=0x7fffffffedb8) at zookd.c:33
 ```
 
-We can now inspect more in depth the stack frame of the `process_client` function:
+We can now inspect the stack frame of the `process_client` function more in depth:
 
 ```sh
 (gdb) info frame
@@ -88,23 +88,23 @@ Stack level 0, frame at 0x7fffffffebb0:
  Saved registers:
   rbp at 0x7fffffffeba0, rip at 0x7fffffffeba8
 ```
-and finally find the memory address of `reqpath[0]`:
+Finally, find the memory address of `reqpath[0]`:
 ```sh
 (gdb) print &reqpath
 $1 = (char (*)[4096]) 0x7fffffffdb90
 ```
 
-From this we can gather an important information: the instruction pointer register (`%rip`) is located at memory address `0x7fffffffeba8` and contains the address of the next instruction which is `0x555555556aff`.
+From this, we can gather important information: the instruction pointer register (`%rip`) is located at memory address `0x7fffffffeba8` and contains the address of the next instruction, `0x555555556aff`.
 
-A visual of the stack and the information we got is int the following visualization:
+The following  visualization shows the stack and the information we obtained:
 ![Visualization of the Stack Frame](imgs/stack-content.png)
 
 ### Part 1 - Exploit
-The goal of the first exercise is to make the web server crash. To do so, simply overwriting the return address value with a random value should be enough to make the CPU point to an invalid memory region and cause the server to terminate with some unexpected behavior.
+The goal of the first exercise is to make the web server crash. Simply overwriting the return address value with a random value should be enough to cause the CPU to point to an invalid memory region, resulting in unexpected behavior and/or server termination.
 
-The idea of the exploit is to use the information we have on memory addresses to construct an HTTP request that will carry the payload inside the request path. In this first part we will use a string composed of all As as simple sequence of bytes that will overwrite the buffer `reqpath` and the subsequent saved `rip`.
+The exploit uses memory address information to construct an HTTP request carrying the payload in the request path. In this first part, we will use a string composed of all As as a simple sequence of bytes that will overwrite the `reqpath` buffer and the subsequent saved `rip`.
 
-A template for the exploit is already provided in the repo, with a python script that issues an HTTP request, my additions was to include in the code the memory addresses found in the previous step and to edit the request to inclued in the path url the payload as follows:
+A template for the exploit, a Python script that issues an HTTP request, is provided in the repository. My addition to the code was to include the memory addresses found in the previous step and edit the request to include the payload in the URL path as follows:
 
 ```python
 ...
@@ -123,28 +123,28 @@ def build_exploit(shellcode: bytes) -> bytes:
 ```
 _[The complete code for this exploit is available in the repo as `code/exploit-2.py`]_
 
-Then by running the server with `./clean-env.sh ./zookd-exstack 8080` and executing the automated script provided by the MIT for the evaluation we get the expected result!
+Then by running the server with the command `./clean-env.sh ./zookd-exstack 8080` and executing the automated script provided by MIT for evaluation, we obtained the expected result!
 
 ![First exercise pass!](imgs/ex1-pass.png)
 ![The sent payload](imgs/ex1-payload.png)
 
 ## Part 2 - Code Injection
-For the second part the goal is to use the same vulnerability to delete a file (`/home/student/grades.txt`) by injecting a shellcode inside the memory of the process exploiting the HTTP request.
+The goal of this part is to exploit the same vulnerability to delete a file, `/home/student/grades.txt`, by injecting shellcode into the process's via an HTTP request.
 
-The exploit here is similar to the first one since we are trying to exploit the same vulnerability, with the additional shellcode and a more careful ovewrite of the return address injected in the payload.
+This exploit is similar to the first one because we are exploiting the same vulnerability. This time, however, the request path contains the shellcode in addition to the padding of the buffer and a return address pointing to the start of the shellcode.
 
-The challenging part of this second exercise is to write the shellcode direclty in x64 ASM instructions. Fortunately int the source https://thesquareplanet.com/blog/smashing-the-stack-21st-century/ there is a well explained blogpost with a shellcode very similar to the one we have to write, except for the syscall we would like to use and the registry loading.
+The challenging part of this second exercise is writing the shellcode directly in x64 assembly instructions. Fortunately, the source https://thesquareplanet.com/blog/smashing-the-stack-21st-century/ contains a well-explained blog post with a shellcode very similar to the one we have to write, except for the syscall and registry loading we would like to use.
 
-Here the steps to generate the new exploit were:
-1. Edit `shellcode.S`, and test the correctness locally with 
+The steps to generate the new exploit were as follows:
+1. Edit `shellcode.S`, test its correctness locally with 
 ```sh
 $ touch /home/student/grades.txt
 $ make
 $ ./run-shellcode shellcode.bin
 ```
-and to verify that the file `grades.txt` is effectively removed. The complete shellcode is available in the repo as `code/shellcode.S`.
+and verify that the file `grades.txt` is removed. The complete shellcode is available in the repository as `code/shellcode.S`.
 
-2. Implement the shellcode into the previous exploit script to take into consideration its position on the stack, padding with some bytes the remaining buffer space and overwrite the correct memory location of the saved rip with the starting address of our shellcode.
+2. Implement the shellcode into the previous exploit script, taking into consideration its position on the stack. Pad the remaining buffer space with some bytes and overwrite the correct memory location of the saved rip with the starting address of the shellcode.
 
 ```python
 ...
@@ -168,13 +168,13 @@ def build_exploit(shellcode: bytes) -> bytes:
 ```
 _[The complete code for this exploit is available in the repo as `code/exploit-4.py`]_
 
-3. Start the web-server and execute the exploit issuing the malicoius request.
+3. Start the web server and execute the exploit by issuing the malicious request.
 
 
-By inspecting the process' memory we can see the result of our the payload injection:
+Inspecting the process's memory shows the result of the payload injection:
 ![Buffer contains the shellcode](imgs/ex2-injected-shellcode.png)
 
-Now as assessment of the correctness of the vulnerability eploitation we can execute the second script, as shown in the following image, where we can both see that our exploit received a PASS and that the file `grades.txt` have been deleted.
+To assess of the correctness of the vulnerability eploitation, we execute the second script, as shown in the following image. We can see that our exploit received a PASS and that the target file `grades.txt` has been deleted.
 
 ![Pass of exercise 2](imgs/ex2-pass.png)
 
