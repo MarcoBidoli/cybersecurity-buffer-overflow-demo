@@ -94,7 +94,7 @@ Finally, find the memory address of `reqpath[0]`:
 $1 = (char (*)[4096]) 0x7fffffffdb90
 ```
 
-From this, we can gather important information: the instruction pointer register (`%rip`) is located at memory address `0x7fffffffeba8` and contains the address of the next instruction, `0x555555556aff`.
+From this, we can gather important information: the saved return address of the `rip` register (which will be loaded into %rip upon function return) is located at memory address `0x7fffffffeba8` and contains the address of the next instruction, `0x555555556aff`.
 
 The following  visualization shows the stack and the information we obtained:
 ![Visualization of the Stack Frame](imgs/stack-content.png)
