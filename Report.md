@@ -1,5 +1,10 @@
 # Cybersecurity Exam Demo: Buffer Overflow Exploitation on Vulnerable x86-64 Systems
 
+Artifacts can be found here: 
+* Exploits code: https://github.com/MarcoBidoli/cybersecurity-buffer-overflow-demo
+
+* Demo video: https://www.youtube.com/watch?v=P8VKzfWPnlI
+
 ## Introduction
 In the following demo I will perform a remote code injection attack based on the [_Lab 1 of MIT 6.566: Computer Systems Security course_](https://css.csail.mit.edu/6.5660/2026/labs/lab1.html). The complete lab consists of four parts, in this demo we will focus on the first two.
 
